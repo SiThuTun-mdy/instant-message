@@ -1,3 +1,5 @@
+# Whole stack:        docker compose up -d --build   -> http://localhost:5173
+# Database only:      docker compose up -d postgres  (then run backend and frontend locally)
 services:
   postgres:
     image: postgres:17
@@ -9,6 +11,29 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U im -d im"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/im
+      JWT_SECRET: ${JWT_SECRET:-local-dev-secret-change-me-0123456789abcdef}
+      # Must equal the address the browser uses, or the WebSocket handshake is refused
+      APP_FRONTEND_ORIGIN: http://localhost:5173
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:

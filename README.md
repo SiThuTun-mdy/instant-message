@@ -12,13 +12,25 @@ You can sign up, log in, find people by account name, add them as contacts, and 
 | Frontend | React 19, TypeScript, Vite, React Router |
 | Local database | Docker Compose (PostgreSQL 17) |
 
-## Run it locally
+## Run it with Docker
 
-You need Java 21 or newer, Node.js 20.19+ or 22.12+, and Docker.
+You only need Docker.
 
 ```bash
-# 1. Database (port 5432)
-docker compose up -d
+docker compose up -d --build
+```
+
+This builds and starts PostgreSQL, the backend, and the frontend (nginx serving the built app and forwarding `/api` and `/ws` to the backend). The app is at http://localhost:5173; the backend is not published on a host port.
+
+Stop it with `docker compose down`. Add `-v` to delete the database as well.
+
+## Run it for development
+
+You need Java 21 or newer, Node.js 20.19+ or 22.12+, and Docker for the database. Stop the Docker frontend first if it is running, since both use port 5173.
+
+```bash
+# 1. Database only (port 5432)
+docker compose up -d postgres
 
 # 2. Backend (port 8085); Flyway creates the tables on first start
 cd backend
@@ -34,7 +46,7 @@ Open http://localhost:5173 and sign up. Sign-up accepts `@gmail.com` addresses o
 
 To try a conversation, open the app in two browser tabs and sign up a different user in each. The login is kept per tab, so the tabs stay separate users.
 
-The Vite dev server proxies `/api` and `/ws` to the backend, so the browser only ever talks to port 5173.
+In development the Vite dev server proxies `/api` and `/ws` to the backend, so in both setups the browser only ever talks to port 5173.
 
 ## Tests
 
@@ -110,7 +122,7 @@ frontend/src/
   api.ts               fetch wrapper
   features/auth/       login and sign-up pages, auth provider
   features/chat/       chat page and the WebSocket hook
-docker-compose.yml     local PostgreSQL
+docker-compose.yml     PostgreSQL, backend and frontend containers
 ProjectDoc.md          the full MVP plan and design decisions
 ```
 
