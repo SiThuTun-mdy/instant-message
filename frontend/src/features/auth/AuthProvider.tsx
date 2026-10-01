@@ -1,24 +1,11 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { ApiError, request, type RequestOptions } from '../../api'
-
-export interface Session {
-  token: string
-  accountName: string
-  displayName: string
-}
+import { AuthContext, type Session } from './useAuth'
 
 interface LoginResponse {
   accessToken: string
   accountName: string
   displayName: string
-}
-
-interface AuthValue {
-  session: Session | null
-  login: (identifier: string, password: string) => Promise<void>
-  logout: () => void
-  /** Calls the API as the logged-in user; an expired token logs the user out. */
-  authed: <T>(path: string, options?: RequestOptions) => Promise<T>
 }
 
 // sessionStorage keeps the login across a reload but not across tabs, so two tabs can be two users
@@ -32,8 +19,6 @@ function loadSession(): Session | null {
     return null
   }
 }
-
-const AuthContext = createContext<AuthValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(loadSession)
@@ -68,10 +53,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({ session, login, logout, authed }), [session, login, logout, authed])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth(): AuthValue {
-  const value = useContext(AuthContext)
-  if (!value) throw new Error('useAuth must be used inside AuthProvider')
-  return value
 }

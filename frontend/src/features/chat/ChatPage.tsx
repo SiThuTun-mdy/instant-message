@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../../api'
-import { useAuth, type Session } from '../auth/AuthContext'
+import { useAuth, type Session } from '../auth/useAuth'
 import type { ChatMessage, ServerFrame, User } from './types'
 import { useChatSocket } from './useChatSocket'
 

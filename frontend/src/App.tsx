@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
-import { AuthProvider, useAuth } from './features/auth/AuthContext'
+import { AuthProvider } from './features/auth/AuthProvider'
+import { useAuth } from './features/auth/useAuth'
 import LoginPage from './features/auth/LoginPage'
 import SignupPage from './features/auth/SignupPage'
 import ChatPage from './features/chat/ChatPage'
