@@ -6,8 +6,8 @@ Oct 1, 2026 · @Si Thu Tun
 
 What is implemented in `backend/` and `frontend/` today. The rest of this document describes the full MVP; anything not listed here is still to do.
 
-- **Built:** sign-up (no verification), login with one access JWT (HS256, 12 hours), user search, conversation list, message history, and one-to-one messaging over a raw WebSocket at `/ws`.
-- **Deferred:** contacts, refresh tokens and logout endpoint, verification codes, account-name availability check, mobile number, rate limiting, `conversations` table (messages carry `sender_id` and `recipient_id` directly).
+- **Built:** sign-up (no verification), login with one access JWT (HS256, 12 hours), user search, contacts (one-way add and list), conversation list, message history, and one-to-one messaging over a raw WebSocket at `/ws`.
+- **Deferred:** removing a contact, refresh tokens and logout endpoint, verification codes, account-name availability check, mobile number, rate limiting, `conversations` table (messages carry `sender_id` and `recipient_id` directly).
 - **Run:** `docker compose up -d`, then `./mvnw spring-boot:run` in `backend/` (port 8085) and `npm run dev` in `frontend/` (port 5173, proxies `/api` and `/ws`).
 - **Test:** `./mvnw test` in `backend/` (needs Docker for Testcontainers).
 

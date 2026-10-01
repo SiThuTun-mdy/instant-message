@@ -24,6 +24,7 @@ export default function ChatPage({ session }: { session: Session }) {
   const navigate = useNavigate()
   const peer = useParams().accountName?.toLowerCase()
 
+  const [contacts, setContacts] = useState<User[]>([])
   const [peers, setPeers] = useState<User[]>([])
   const [unread, setUnread] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
@@ -53,6 +54,16 @@ export default function ChatPage({ session }: { session: Session }) {
   }, [authed])
 
   useEffect(refreshPeers, [refreshPeers, syncEpoch])
+
+  useEffect(() => {
+    let cancelled = false
+    authed<User[]>('/contacts')
+      .then((list) => !cancelled && setContacts(list))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [authed, syncEpoch])
 
   // Conversation history: on opening a chat and again after each reconnect
   useEffect(() => {
@@ -139,6 +150,18 @@ export default function ChatPage({ session }: { session: Session }) {
     navigate(`/chat/${user.accountName}`)
   }
 
+  function addContact(accountName: string) {
+    authed<User>('/contacts', { method: 'POST', body: { accountName } })
+      .then((added) =>
+        setContacts((prev) =>
+          prev.some((c) => c.accountName === added.accountName)
+            ? prev
+            : [...prev, added].sort((a, b) => a.accountName.localeCompare(b.accountName)),
+        ),
+      )
+      .catch(() => {})
+  }
+
   /** Sends a new message, or resends a failed one under its original id so it cannot duplicate. */
   function deliver(message: ChatMessage) {
     setSendError('')
@@ -165,8 +188,19 @@ export default function ChatPage({ session }: { session: Session }) {
   }
 
   const searching = query.trim() !== ''
-  const listed = searching ? results : peers
-  const peerUser = peers.find((p) => p.accountName === peer)
+  const isContact = (accountName: string) => contacts.some((c) => c.accountName === accountName)
+  // People who wrote to you, or whom you opened from search, without being added
+  const otherChats = peers.filter((p) => !isContact(p.accountName))
+  const peerUser = [...contacts, ...peers].find((p) => p.accountName === peer)
+
+  const chatLink = (user: User) => (
+    <li key={user.accountName}>
+      <Link className={user.accountName === peer ? 'row active' : 'row'} to={`/chat/${user.accountName}`}>
+        <UserLabel user={user} />
+        {unread.has(user.accountName) && <span className="dot" aria-label="New messages" />}
+      </Link>
+    </li>
+  )
 
   return (
     <div className="chat">
@@ -187,22 +221,32 @@ export default function ChatPage({ session }: { session: Session }) {
           onChange={(e) => setQuery(e.target.value)}
         />
         <ul>
-          {listed.map((user) => (
-            <li key={user.accountName}>
-              {searching ? (
-                <button type="button" className="row" onClick={() => openChat(user)}>
-                  <UserLabel user={user} />
-                </button>
-              ) : (
-                <Link className={user.accountName === peer ? 'row active' : 'row'} to={`/chat/${user.accountName}`}>
-                  <UserLabel user={user} />
-                  {unread.has(user.accountName) && <span className="dot" aria-label="New messages" />}
-                </Link>
-              )}
-            </li>
-          ))}
-          {listed.length === 0 && (
-            <li className="muted empty">{searching ? 'No one found.' : 'Search for someone to start a chat.'}</li>
+          {searching ? (
+            <>
+              {results.map((user) => (
+                <li key={user.accountName} className="result">
+                  <button type="button" className="row" onClick={() => openChat(user)}>
+                    <UserLabel user={user} />
+                  </button>
+                  {isContact(user.accountName) ? (
+                    <span className="muted">Added</span>
+                  ) : (
+                    <button type="button" className="link" onClick={() => addContact(user.accountName)}>
+                      Add
+                    </button>
+                  )}
+                </li>
+              ))}
+              {results.length === 0 && <li className="muted empty">No one found.</li>}
+            </>
+          ) : (
+            <>
+              <li className="section">Contacts</li>
+              {contacts.map(chatLink)}
+              {contacts.length === 0 && <li className="muted empty">Search for someone and add them.</li>}
+              {otherChats.length > 0 && <li className="section">Other chats</li>}
+              {otherChats.map(chatLink)}
+            </>
           )}
         </ul>
       </aside>
@@ -220,6 +264,11 @@ export default function ChatPage({ session }: { session: Session }) {
             <header>
               <strong>{peerUser?.displayName ?? peer}</strong>
               <span className="muted">@{peer}</span>
+              {!loadError && !isContact(peer) && (
+                <button type="button" className="link add-contact" onClick={() => addContact(peer)}>
+                  Add contact
+                </button>
+              )}
             </header>
             <div className="messages">
               {loadError && <p className="error">{loadError}</p>}

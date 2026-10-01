@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketHttpHeaders;
@@ -93,6 +94,42 @@ class ChatFlowIntegrationTest {
 
         alice.session.close();
         bob.session.close();
+    }
+
+    @Test
+    void contactsAreAddedOnceAndOnlyForTheOwner() {
+        String carolToken = signupAndLogin("carol");
+        String daveToken = signupAndLogin("dave");
+
+        for (int i = 0; i < 2; i++) {
+            Map<String, Object> added = http().post().uri("/api/v1/contacts")
+                    .header("Authorization", "Bearer " + carolToken)
+                    .body(Map.of("accountName", "dave"))
+                    .retrieve().body(new ParameterizedTypeReference<>() {
+                    });
+            assertThat(added).containsEntry("accountName", "dave");
+        }
+
+        assertThat(contactsOf(carolToken)).extracting(c -> c.get("accountName")).containsExactly("dave");
+        assertThat(contactsOf(daveToken)).isEmpty();
+
+        assertThatThrownBy(() -> http().post().uri("/api/v1/contacts")
+                .header("Authorization", "Bearer " + carolToken)
+                .body(Map.of("accountName", "carol"))
+                .retrieve().toBodilessEntity())
+                .isInstanceOf(HttpClientErrorException.BadRequest.class);
+        assertThatThrownBy(() -> http().post().uri("/api/v1/contacts")
+                .header("Authorization", "Bearer " + carolToken)
+                .body(Map.of("accountName", "nobody"))
+                .retrieve().toBodilessEntity())
+                .isInstanceOf(HttpClientErrorException.NotFound.class);
+    }
+
+    private List<Map<String, Object>> contactsOf(String token) {
+        return http().get().uri("/api/v1/contacts")
+                .header("Authorization", "Bearer " + token)
+                .retrieve().body(new ParameterizedTypeReference<>() {
+                });
     }
 
     @Test
